@@ -1,0 +1,36 @@
+name: 'AWS Credential Process'
+description: 'Decrypt the AWS credentials and hand them using stdout to the aws-cli tool'
+inputs:
+  aws-credentail-jwe:
+    description: 'Complete AWS credential process output proceted in a JWE'
+    required: true
+  aws-config-file:
+    description: 'Pathname of the aws configuration file'
+    required: false
+    default: '~/.aws/config'
+
+# There is no other output than the aws config file
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Make latchy available in the runner
+      shell: bash
+      run: |      
+        if [ -f "${GITHUB_ACTION_PATH}/../../bin/latchy" ]; then
+          mkdir -p ~/bin
+          cp "${GITHUB_ACTION_PATH}/../../bin/latchy" ~/bin/latchy
+          chmod +x ~/bin/latchy
+          echo "Latchy copied successfully"
+        else
+          echo "Error: bin/latchy not found"
+          find "${GITHUB_ACTION_PATH}/../.." -name latchy
+        fi
+
+    - name: Create an aws-cli config that uses latchy as the credential-process
+      shell: bash
+      run: |
+        mkdir -p ~/.aws
+        echo -e "[default]\ncredential_process = sh -c 'echo \"${{ inputs.aws-credentail-jwe }}\" | ~/bin/latchy'" >${{ inputs.aws-config-file }}
+
+    
